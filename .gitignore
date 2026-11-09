@@ -1,0 +1,6 @@
+vendor/
+fonts.json
+__pycache__/
+.pytest_cache/
+.venv/
+job.json

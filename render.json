@@ -1,0 +1,17 @@
+{
+  "generator": {
+    "repo": "idrsdev/instagram-carousel-generator",
+    "sha": "44e6ee5979864a21fd9e47425fcd6fa8242bfe99",
+    "path": "vendor/idrs",
+    "design_system": "skills/social-carousel-generator/references/design-system.sample.json",
+    "fonts_script": "skills/social-carousel-generator/scripts/download_fonts.py"
+  },
+  "fonts": "fonts.json",
+  "pages_base": "https://omgit15.github.io/careerloop-render",
+  "image_path": "renders/{id}/{n:02d}.jpg",
+  "jpeg_quality": 90,
+  "wordmark": "CAREERLOOP",
+  "min_slides": 2,
+  "max_slides": 10,
+  "engines": ["chromium", "chrome"]
+}

@@ -1,0 +1,72 @@
+name: render
+# careerloop-studio's Instagram lane sends repository_dispatch (event render-carousel) with
+# RENDER_REPO_TOKEN. The JPEGs are committed under renders/<id>/ on main, which GitHub Pages
+# serves at https://omgit15.github.io/careerloop-render/renders/<id>/NN.jpg.
+on:
+  repository_dispatch:
+    types: [render-carousel]
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job JSON: {"id": "ig-...", "engine": "chromium", "slides": [...]}'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Read the pinned generator SHA
+        id: pin
+        run: echo "sha=$(jq -r .generator.sha render.json)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: idrsdev/instagram-carousel-generator
+          ref: ${{ steps.pin.outputs.sha }}
+          path: vendor/idrs
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - name: Write the job file (validated again by render.py)
+        env:
+          PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+          INPUT_JOB: ${{ inputs.job }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "repository_dispatch" ]; then
+            printf '%s' "$PAYLOAD" > job.json
+          else
+            printf '%s' "$INPUT_JOB" > job.json
+          fi
+          engine=$(jq -r '.engine // "chromium"' job.json)
+          case "$engine" in chromium|chrome) ;; *) echo "unknown engine"; exit 1 ;; esac
+          echo "ENGINE=$engine" >> "$GITHUB_ENV"
+      - name: Install Chromium (the chrome fallback uses the runner's Google Chrome)
+        if: env.ENGINE == 'chromium'
+        run: python -m playwright install --with-deps chromium
+      - name: Fonts from the pinned generator (system fonts if Google Fonts is unreachable)
+        run: |
+          python vendor/idrs/skills/social-carousel-generator/scripts/download_fonts.py \
+            --ds vendor/idrs/skills/social-carousel-generator/references/design-system.sample.json \
+            --out fonts.json || echo "fonts unavailable; rendering with system fonts"
+      - run: python render.py job.json --engine "$ENGINE"
+      - name: Commit the renders to main (GitHub Pages serves them)
+        run: |
+          id=$(jq -r .id job.json)
+          git config user.name "careerloop-render-bot"
+          git config user.email "careerloop-render-bot@users.noreply.github.com"
+          git add "renders/$id"
+          git commit -m "render $id" || exit 0
+          git pull --rebase
+          git push
