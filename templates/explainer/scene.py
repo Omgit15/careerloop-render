@@ -13,7 +13,9 @@ from pathlib import Path
 from manim import (DOWN, UP, Arrow, Create, FadeIn, GrowArrow, RoundedRectangle, Scene, Text, VGroup,
                    Write, config)
 
-TOKENS = json.loads((Path(__file__).resolve().parents[1] / "brand" / "tokens.json").read_text("utf-8"))
+LIBRARY = Path(__file__).resolve().parents[1]
+TOKENS = json.loads((LIBRARY / "brand" / "tokens.json").read_text("utf-8"))
+TIMING = json.loads((LIBRARY / "library.json").read_text("utf-8"))["timing"]
 JOB = json.loads(Path(os.environ["MOTION_JOB"]).read_text("utf-8"))
 SIZE = TOKENS["sizes"][os.environ["MOTION_SIZE"]]
 (W, H), SAFE = SIZE["size"], SIZE["safe"]
@@ -67,10 +69,10 @@ class Explainer(Scene):
         title, boxes, arrows = build()
         flow = VGroup(*boxes, *arrows)
         fit(VGroup(title, flow).arrange(DOWN, buff=0.6))
-        step = JOB["timing"]["step_s"]
+        step = TIMING["step_s"]
         self.play(Write(title), run_time=min(1.0, step))
         for n, box in enumerate(boxes):
             if n:
                 self.play(GrowArrow(arrows[n - 1]), run_time=0.3)
             self.play(Create(box[0]), FadeIn(box[1], shift=UP * 0.1), run_time=step - 0.3)
-        self.wait(JOB["timing"]["tail_s"])
+        self.wait(TIMING["tail_s"])

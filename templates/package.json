@@ -1,0 +1,8 @@
+{
+  "name": "careerloop-motion-templates",
+  "private": true,
+  "description": "HyperFrames for the motion templates, locked (npm ci); versions published before 2026-10-26",
+  "dependencies": {
+    "hyperframes": "0.8.200"
+  }
+}

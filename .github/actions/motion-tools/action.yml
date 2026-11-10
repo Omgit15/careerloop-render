@@ -1,7 +1,7 @@
 name: motion tools
 description: >-
   Tools for the motion templates on ubuntu: always FFmpeg, Noto fonts, Python 3.12 with the pinned
-  requirements and Playwright Chromium; plus, by `needs`, Node for HyperFrames (npx), ManimCE in
+  requirements and Playwright Chromium; plus, by `needs`, Node for HyperFrames (npm ci from templates/package-lock.json), ManimCE in
   its own venv, uv for bar_chart_race, and the pinned Blender download (SHA-256 checked). No Docker.
 inputs:
   needs:
@@ -28,6 +28,9 @@ runs:
         sudo apt-get update && sudo apt-get install -y --no-install-recommends "${pkgs[@]}"
         python -m pip install -r requirements.txt "uv==0.13.5"
         python -m playwright install --with-deps chromium
+        if [[ " $NEEDS " == *" node "* ]]; then
+          npm ci --prefix templates --ignore-scripts --no-audit --no-fund   # HyperFrames, locked
+        fi
     - name: ManimCE in its own venv
       if: contains(inputs.needs, 'manim')
       shell: bash

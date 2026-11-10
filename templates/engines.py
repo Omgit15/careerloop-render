@@ -28,11 +28,13 @@ def _job_file(job: dict[str, Any], out: Path) -> Path:
 
 
 def hyperframes(job: dict[str, Any], size_name: str, file: Path, out: Path, timeout: int) -> Path:
+    """The locked install (templates/package-lock.json, `npm ci`), else npx at the pinned version."""
     work = fill.project(job, size_name, file, out.parent / f"{out.stem}-hf")
-    npx = shutil.which("npx") or "npx"
-    _run([npx, "-y", f"hyperframes@{pins()['npm']['hyperframes']['version']}", "render",
-          "--output", str(out.resolve()), "--fps", str(library()["fps"])], timeout, cwd=work,
-         env={"HYPERFRAMES_SKIP_SKILLS": "1", "DO_NOT_TRACK": "1", "CI": "true"})
+    locked = shutil.which("hyperframes", path=str(HERE / "node_modules" / ".bin"))
+    cli = [locked] if locked else [shutil.which("npx") or "npx", "-y",
+                                   f"hyperframes@{pins()['npm']['hyperframes']['version']}"]
+    _run([*cli, "render", "--output", str(out.resolve()), "--fps", str(library()["fps"])], timeout,
+         cwd=work, env={"HYPERFRAMES_SKIP_SKILLS": "1", "DO_NOT_TRACK": "1", "CI": "true"})
     return out
 
 
