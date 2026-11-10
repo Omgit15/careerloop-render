@@ -1,0 +1,105 @@
+name: reel
+# Locked Stack row 29, the CPU render matrix. careerloop-studio's video lane (lanes/video/render.py)
+# sends repository_dispatch (event render-reel) with RENDER_REPO_TOKEN:
+#   {"studio_sha": "<40-hex>", "runners": ["ubuntu-24.04", "ubuntu-22.04"],
+#    "faceless_after_failures": true, "reels": [<job>, ...]}
+# One matrix job per reel on the first runner. A failed reel re-runs once on the other runner;
+# after 2 failures its faceless version ships (the switch). Reels are committed under
+# renders/<id>/reel.mp4 on main, which Pages serves for the Instagram and Facebook video_url.
+on:
+  repository_dispatch:
+    types: [render-reel]
+  workflow_dispatch:
+    inputs:
+      payload:
+        description: The render-reel client_payload as JSON
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  DRY_RUN: ${{ vars.DRY_RUN || 'true' }}
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      reels: ${{ steps.plan.outputs.reels }}
+      studio_sha: ${{ steps.plan.outputs.studio_sha }}
+      first: ${{ steps.plan.outputs.first }}
+      other: ${{ steps.plan.outputs.other }}
+      faceless: ${{ steps.plan.outputs.faceless }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate the payload and write the matrix
+        id: plan
+        env:
+          PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+          INPUT_PAYLOAD: ${{ inputs.payload }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "repository_dispatch" ]; then
+            printf '%s' "$PAYLOAD" > payload.json
+          else
+            printf '%s' "$INPUT_PAYLOAD" > payload.json
+          fi
+          python3 reel_plan.py payload.json --github-output "$GITHUB_OUTPUT"
+
+  first:
+    needs: plan
+    runs-on: ${{ needs.plan.outputs.first }}
+    timeout-minutes: 45
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        reel: ${{ fromJSON(needs.plan.outputs.reels) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/reel
+        with:
+          job: ${{ toJSON(matrix.reel) }}
+          studio-sha: ${{ needs.plan.outputs.studio_sha }}
+          studio-token: ${{ secrets.STUDIO_READ_TOKEN }}
+          pexels-key: ${{ secrets.PEXELS_API_KEY }}
+
+  retry:
+    needs: [plan, first]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ${{ needs.plan.outputs.other }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        reel: ${{ fromJSON(needs.plan.outputs.reels) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+      - name: Rendered by the first runner?
+        id: done
+        env:
+          REEL_ID: ${{ matrix.reel.id }}
+        run: |
+          if [ -f "renders/$REEL_ID/reel.mp4" ]; then echo "done=true" >> "$GITHUB_OUTPUT"; else echo "done=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Second try, on the other runner
+        id: again
+        if: steps.done.outputs.done != 'true'
+        continue-on-error: true
+        uses: ./.github/actions/reel
+        with:
+          job: ${{ toJSON(matrix.reel) }}
+          studio-sha: ${{ needs.plan.outputs.studio_sha }}
+          studio-token: ${{ secrets.STUDIO_READ_TOKEN }}
+          pexels-key: ${{ secrets.PEXELS_API_KEY }}
+      - name: After 2 failures the faceless version ships
+        if: steps.done.outputs.done != 'true' && steps.again.outcome == 'failure' && needs.plan.outputs.faceless == 'true'
+        uses: ./.github/actions/reel
+        with:
+          job: ${{ toJSON(matrix.reel) }}
+          studio-sha: ${{ needs.plan.outputs.studio_sha }}
+          studio-token: ${{ secrets.STUDIO_READ_TOKEN }}
+          pexels-key: ${{ secrets.PEXELS_API_KEY }}
+          faceless: "true"
