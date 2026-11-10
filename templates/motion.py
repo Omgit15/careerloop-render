@@ -34,7 +34,8 @@ def precheck(job: dict[str, Any], page: Path, work: Path) -> None:
 
 
 def attempt(job: dict[str, Any], engine: str, file: Path, out: Path, timeout: int) -> dict[str, str]:
-    paths = {}
+    paths, out = {}, out.resolve()
+    out.mkdir(parents=True, exist_ok=True)
     for size_name in job["sizes"]:
         path = engines.ENGINES[engine](job, size_name, file, out / f"{size_name}.mp4", timeout)
         engines.probe(path, size_name)

@@ -28,7 +28,7 @@ jobs:
           - {name: three, test: three, template: three, engine: three, needs: node}
           - {name: hero-blender, test: three, template: hero, engine: blender, needs: blender}
           - {name: flat, test: three, template: flat, engine: flat, needs: node}
-          - {name: hero-over-cap, test: three, template: hero, engine: "", cap: "5", expect: flat, needs: blender node}
+          - {name: hero-over-cap, test: three, template: hero, engine: "", cap: "5", expect: flat, error: TimeoutExpired, needs: blender node}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/motion-tools
@@ -41,6 +41,7 @@ jobs:
           ENGINE: ${{ matrix.engine }}
           CAP: ${{ matrix.cap }}
           EXPECT: ${{ matrix.expect || matrix.engine }}
+          ERROR: ${{ matrix.error }}
         run: |
           args=(--template "$TEMPLATE")
           [ -n "$ENGINE" ] && args+=(--engine "$ENGINE")
@@ -48,6 +49,10 @@ jobs:
           python -m templates.motion "templates/$TEST/test.json" --out out "${args[@]}"
           got=$(jq -r .engine out/motion_log.json)
           [ "$got" = "$EXPECT" ] || { echo "rendered by $got, expected $EXPECT"; exit 1; }
+          if [ -n "$ERROR" ]; then
+            first=$(jq -r '.failures[0].error' out/motion_log.json)
+            [ "$first" = "$ERROR" ] || { echo "first failure $first, expected $ERROR"; exit 1; }
+          fi
           for s in vertical square 4x5; do test -s "out/$s.mp4"; done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
