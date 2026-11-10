@@ -41,7 +41,7 @@ def main(job_file: str, tokens_file: str, size_name: str, out: str) -> None:
              va="center")
     bcr.bar_chart_race(df=frame, filename=out, orientation="h", sort="desc", n_bars=len(labels), fig=fig,
                        cmap=[c["accent"], c["accent_2"]], period_label=False, steps_per_period=60,
-                       period_length=3000, end_period_pause=2000, bar_label_size=16, tick_label_size=16,
+                       period_length=3000, bar_label_size=16, tick_label_size=16,
                        filter_column_colors=False, fixed_max=True, dpi=DPI)
 
 
