@@ -1,0 +1,48 @@
+name: motion tools
+description: >-
+  Tools for the motion templates on ubuntu: always FFmpeg, Noto fonts, Python 3.12 with the pinned
+  requirements and Playwright Chromium; plus, by `needs`, Node for HyperFrames (npx), ManimCE in
+  its own venv, uv for bar_chart_race, and the pinned Blender download (SHA-256 checked). No Docker.
+inputs:
+  needs:
+    description: Space-separated extras from node, manim, uv, blender (templates/library.json tools)
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: "3.12"
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      if: contains(inputs.needs, 'node')
+      with:
+        node-version: "24"
+    - name: FFmpeg, Noto fonts, Python requirements, Chromium
+      shell: bash
+      env:
+        NEEDS: ${{ inputs.needs }}
+      run: |
+        pkgs=(ffmpeg fonts-noto-core)
+        [[ " $NEEDS " == *" manim "* ]] && pkgs+=(libcairo2-dev libpango1.0-dev pkg-config)
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends "${pkgs[@]}"
+        python -m pip install -r requirements.txt "uv==0.13.5"
+        python -m playwright install --with-deps chromium
+    - name: ManimCE in its own venv
+      if: contains(inputs.needs, 'manim')
+      shell: bash
+      run: |
+        python -m venv "$RUNNER_TEMP/manim"
+        "$RUNNER_TEMP/manim/bin/python" -m pip install -r templates/explainer/requirements.txt
+        echo "MANIM_PYTHON=$RUNNER_TEMP/manim/bin/python" >> "$GITHUB_ENV"
+    - name: Blender (pinned download, SHA-256 checked)
+      if: contains(inputs.needs, 'blender')
+      shell: bash
+      run: |
+        url=$(jq -r .blender.url templates/pins.json)
+        sum=$(jq -r .blender.sha256 templates/pins.json)
+        curl -fsSL "$url" -o "$RUNNER_TEMP/blender.tar.xz"
+        echo "$sum  $RUNNER_TEMP/blender.tar.xz" | sha256sum -c -
+        sudo apt-get install -y --no-install-recommends libxi6 libxxf86vm1 libxfixes3 libxrender1 libgl1 libxkbcommon0 libsm6
+        mkdir -p "$RUNNER_TEMP/blender" && tar -xJf "$RUNNER_TEMP/blender.tar.xz" -C "$RUNNER_TEMP/blender" --strip-components=1
+        echo "BLENDER=$RUNNER_TEMP/blender/blender" >> "$GITHUB_ENV"

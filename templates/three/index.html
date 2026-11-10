@@ -1,0 +1,71 @@
+<!doctype html>
+<!-- 3D (Locked Stack row 22): three.js inside HyperFrames. The scene is drawn only from the paused
+     GSAP timeline (no free-running loop), so every frame is deterministic. Text is HTML inside the
+     safe zone; the WebGL canvas carries no words. Fallback: three/flat.html (2.5D). -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=__W__, height=__H__" />
+  <script src="__GSAP__" integrity="__GSAP_SRI__" crossorigin="anonymous"></script>
+  <style>__TOKENS_CSS__</style>
+  <style>
+    canvas { position: absolute; inset: 0; z-index: -1; }
+    #safe { z-index: 1; display: flex; flex-direction: column; justify-content: flex-start; gap: 0.3em; }
+    .title { font-size: var(--display); font-weight: var(--w-display); letter-spacing: -0.02em; }
+    .line { font-size: var(--body); color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="main" data-start="0" data-duration="__DUR__"
+       data-width="__W__" data-height="__H__" data-fps="__FPS__">
+    <canvas id="gl" width="__W__" height="__H__"></canvas>
+    <div id="safe" class="clip" data-start="0" data-duration="__DUR__" data-track-index="0">
+      <div class="txt title" id="title"></div>
+      <div class="txt line" id="line"></div>
+    </div>
+  </div>
+  <script id="job" type="application/json">__JOB_JSON__</script>
+  <script type="module">
+    import * as THREE from "__THREE__";
+    const job = JSON.parse(document.getElementById("job").textContent);
+    document.getElementById("title").textContent = job.title;
+    document.getElementById("line").textContent = job.line;
+    const css = getComputedStyle(document.documentElement);
+    const colour = name => new THREE.Color(css.getPropertyValue(name).trim());
+    const canvas = document.getElementById("gl");
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(1);
+    renderer.setSize(canvas.width, canvas.height, false);
+    const scene = new THREE.Scene();
+    scene.background = colour("--ground");
+    const camera = new THREE.PerspectiveCamera(35, canvas.width / canvas.height, 0.1, 100);
+    camera.position.set(0, 0, 13);
+    const loop = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.36, 48, 160),
+      new THREE.MeshStandardMaterial({ color: colour("--accent"), metalness: 0.3, roughness: 0.35 }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(2.1, 0.05, 16, 200),
+      new THREE.MeshStandardMaterial({ color: colour("--accent-2"), roughness: 0.5 }));
+    const group = new THREE.Group();
+    group.add(loop, ring);
+    group.position.y = -1.4;
+    scene.add(group, new THREE.AmbientLight(0xffffff, 0.6));
+    const key = new THREE.DirectionalLight(0xffffff, 2.4);
+    key.position.set(3, 4, 6);
+    scene.add(key);
+    const state = { p: 0 };
+    const draw = () => {
+      loop.rotation.set(0.9 + state.p * 0.6, state.p * Math.PI * 1.5, 0);
+      ring.rotation.set(1.2, -state.p * Math.PI, state.p * 0.8);
+      renderer.render(scene, camera);
+    };
+    const tl = gsap.timeline({ paused: true });
+    const m = job.motion;
+    tl.to(state, { p: 1, duration: job.duration, ease: "none", onUpdate: draw }, 0);
+    tl.from("#title", { y: 30, autoAlpha: 0, duration: m.enter_s, ease: m.enter }, 0.2);
+    tl.from("#line", { y: 20, autoAlpha: 0, duration: m.enter_s, ease: m.enter }, 0.5);
+    draw();
+    window.__timelines = window.__timelines || {};
+    window.__timelines.main = tl;
+    tl.seek(0);
+  </script>
+</body>
+</html>

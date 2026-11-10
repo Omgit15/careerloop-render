@@ -1,0 +1,69 @@
+<!doctype html>
+<!-- Data video (Locked Stack row 21): HyperFrames plus D3. Bars start at zero (the scale's domain
+     is [0, max]), the source and date stay on screen from 0.2 s to the end (2 s or more), the
+     sample size shows for shares. templates/rules.py refuses unsourced, undated or salary numbers. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=__W__, height=__H__" />
+  <script src="__GSAP__" integrity="__GSAP_SRI__" crossorigin="anonymous"></script>
+  <script src="__D3__" integrity="__D3_SRI__" crossorigin="anonymous"></script>
+  <style>__TOKENS_CSS__</style>
+  <style>
+    #safe { display: flex; flex-direction: column; gap: 3%; }
+    .title { font-size: var(--title); font-weight: var(--w-display); }
+    #chart { position: relative; flex: 1; }
+    .row { position: absolute; left: 0; right: 0; }
+    .label { font-size: var(--small); font-weight: var(--w-body); white-space: nowrap; }
+    .bar { position: absolute; left: 0; border-radius: 0 10px 10px 0; background: var(--accent-2); }
+    .row:first-child .bar { background: var(--accent); }
+    .value { position: absolute; font-size: var(--small); font-weight: var(--w-display); white-space: nowrap; }
+    .source { font-size: var(--small); color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="main" data-start="0" data-duration="__DUR__"
+       data-width="__W__" data-height="__H__" data-fps="__FPS__">
+    <div id="safe" class="clip" data-start="0" data-duration="__DUR__" data-track-index="0">
+      <div class="txt title" id="title"></div>
+      <div id="chart"></div>
+      <div class="txt source" id="source"></div>
+    </div>
+  </div>
+  <script id="job" type="application/json">__JOB_JSON__</script>
+  <script>
+    const job = JSON.parse(document.getElementById("job").textContent);
+    const share = ["%", "percent", "share"].includes(job.unit.toLowerCase());
+    const fmt = v => d3.format(",")(v) + (share ? "%" : job.unit ? " " + job.unit : "");
+    const sources = [...new Set(job.items.map(i => `${i.source}, ${i.date}`))].join("; ");
+    document.getElementById("title").textContent = job.title;
+    document.getElementById("source").textContent =
+      "Source: " + sources + (share ? ` · n = ${d3.format(",")(job.sample_size)}` : "");
+    const chart = document.getElementById("chart");
+    const width = chart.clientWidth, height = chart.clientHeight;
+    const reserve = 0.2 * width;                                // room for the value label
+    const x = d3.scaleLinear().domain([0, d3.max(job.items, d => d.value) || 1]).range([0, width - reserve]);
+    const y = d3.scaleBand().domain(job.items.map((_, i) => i)).range([0, height]).paddingInner(0.2);
+    const band = y.bandwidth(), labelH = Math.min(band * 0.5, 34 * 1.2);
+    const rows = d3.select(chart).selectAll(".row").data(job.items).join("div")
+      .attr("class", "row").style("top", (_, i) => `${y(i)}px`).style("height", `${band}px`);
+    rows.append("div").attr("class", "txt label").text(d => d.label);
+    rows.append("div").attr("class", "bar").style("top", `${labelH}px`)
+      .style("height", `${band - labelH}px`).style("width", d => `${Math.max(x(d.value), 2)}px`);
+    rows.append("div").attr("class", "txt value").text(d => fmt(d.value))
+      .style("left", d => `${x(d.value) + 16}px`).style("top", `${labelH}px`)
+      .style("line-height", `${band - labelH}px`);
+    const tl = gsap.timeline({ paused: true });
+    const m = job.motion;
+    tl.from("#title", { y: 20, autoAlpha: 0, duration: m.enter_s, ease: m.enter }, 0);
+    tl.from("#source", { autoAlpha: 0, duration: 0.2 }, job.timing.source_in_s - 0.2);
+    tl.from(".label", { autoAlpha: 0, duration: m.enter_s, stagger: 0.08 }, 0.3);
+    tl.from(".bar", { scaleX: 0, transformOrigin: "left center", duration: 1.2, ease: m.enter, stagger: 0.12 }, 0.6);
+    tl.from(".value", { autoAlpha: 0, duration: 0.3, stagger: 0.12 }, 1.4);
+    tl.to({}, { duration: 0.01 }, job.duration - 0.01);
+    window.__timelines = window.__timelines || {};
+    window.__timelines.main = tl;
+    tl.seek(0);
+  </script>
+</body>
+</html>

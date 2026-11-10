@@ -1,0 +1,4 @@
+{"id": "test-explainer", "template": "explainer",
+ "data": {"title": "How hiring software reads a resume",
+          "steps": ["You upload your resume", "Software pulls out the text", "It matches the job keywords",
+                    "A recruiter sees the shortlist"]}}
