@@ -13,5 +13,10 @@
   "wordmark": "CAREERLOOP",
   "min_slides": 2,
   "max_slides": 10,
-  "engines": ["chromium", "chrome"]
+  "engines": ["chromium", "chrome"],
+  "reel": {
+    "runners": ["ubuntu-24.04", "ubuntu-22.04"],
+    "max_reels": 20,
+    "video_path": "renders/{id}/reel.mp4"
+  }
 }

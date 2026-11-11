@@ -1,0 +1,67 @@
+name: render one reel
+description: >-
+  Check out careerloop-studio at the dispatched SHA (read-only token), build one reel with its
+  video lane (python -m lanes.video build), and commit renders/<id>/reel.mp4 for GitHub Pages.
+inputs:
+  job:
+    description: One reel job as JSON (from reel_plan.py)
+    required: true
+  studio-sha:
+    description: careerloop-studio commit to run
+    required: true
+  studio-token:
+    description: STUDIO_READ_TOKEN (contents read on careerloop-studio)
+    required: true
+  pexels-key:
+    description: PEXELS_API_KEY for stock footage (empty means the plain background)
+    required: false
+    default: ""
+  faceless:
+    description: '"true" ships the faceless version (after 2 failures)'
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: Omgit15/careerloop-studio
+        ref: ${{ inputs.studio-sha }}
+        token: ${{ inputs.studio-token }}
+        path: studio
+        persist-credentials: false
+    - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: "3.12"
+    - name: FFmpeg (libass), Noto fonts, uv and the studio requirements
+      shell: bash
+      run: |
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-core
+        args=(-r studio/requirements.txt -r studio/requirements-video-asr.txt "uv==0.13.5")
+        for f in studio/requirements-lane-*.txt; do [ -e "$f" ] && args+=(-r "$f"); done
+        python -m pip install "${args[@]}"
+    - name: Build the reel
+      shell: bash
+      working-directory: studio
+      env:
+        JOB: ${{ inputs.job }}
+        FACELESS: ${{ inputs.faceless }}
+        PEXELS_API_KEY: ${{ inputs.pexels-key }}
+      run: |
+        printf '%s' "$JOB" > ../job.json
+        flag=(); [ "$FACELESS" = "true" ] && flag=(--faceless)
+        python -m lanes.video build ../job.json --out ../out "${flag[@]}"
+    - name: Commit the reel to main (GitHub Pages serves it)
+      shell: bash
+      env:
+        JOB: ${{ inputs.job }}
+      run: |
+        id=$(printf '%s' "$JOB" | jq -r .id)
+        mkdir -p "renders/$id"
+        cp out/reel.mp4 out/reel_log.json "renders/$id/"
+        git config user.name "careerloop-render-bot"
+        git config user.email "careerloop-render-bot@users.noreply.github.com"
+        git add "renders/$id"
+        git commit -m "reel $id" || exit 0
+        for attempt in 1 2 3; do git pull --rebase && git push && exit 0; sleep $((attempt * 5)); done
+        exit 1
