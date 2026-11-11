@@ -7,3 +7,4 @@ job.json
 payload.json
 studio/
 out/
+templates/node_modules/

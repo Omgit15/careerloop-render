@@ -1,0 +1,6 @@
+{"id": "test-data", "template": "data",
+ "data": {"title": "Where freshers found their first job", "unit": "%", "sample_size": 1200,
+          "items": [{"label": "Job portals", "value": 41, "source": "Sample survey (test data)", "date": "2026-10"},
+                    {"label": "Referrals", "value": 27, "source": "Sample survey (test data)", "date": "2026-10"},
+                    {"label": "Campus drives", "value": 19, "source": "Sample survey (test data)", "date": "2026-10"},
+                    {"label": "Company sites", "value": 13, "source": "Sample survey (test data)", "date": "2026-10"}]}}

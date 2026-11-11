@@ -1,0 +1,61 @@
+name: motion
+# Locked Stack rows 19 to 22. careerloop-studio's video lane (lanes/video/motion.py) sends
+# repository_dispatch (event render-motion) with RENDER_REPO_TOKEN: {"jobs": [<motion job>, ...]}.
+# templates/plan.py validates every job (a refused job fails the plan), one matrix job renders
+# each motion job at its sizes with the template's fallback chain, and the files are committed to
+# renders/<id>/<size>.mp4 on main, which Pages serves.
+on:
+  repository_dispatch:
+    types: [render-motion]
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      jobs: ${{ steps.plan.outputs.jobs }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate the payload and write the matrix
+        id: plan
+        env:
+          PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+        run: |
+          printf '%s' "$PAYLOAD" > payload.json
+          python3 -m templates.plan payload.json --github-output "$GITHUB_OUTPUT"
+
+  render:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        item: ${{ fromJSON(needs.plan.outputs.jobs) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/motion-tools
+        with:
+          needs: ${{ matrix.item.tools }}
+      - name: Render every size with the fallback chain
+        env:
+          JOB: ${{ toJSON(matrix.item.job) }}
+        run: |
+          printf '%s' "$JOB" > job.json
+          python -m templates.motion job.json --out out
+      - name: Commit the renders to main (GitHub Pages serves them)
+        env:
+          JOB: ${{ toJSON(matrix.item.job) }}
+        run: |
+          id=$(printf '%s' "$JOB" | jq -r .id)
+          mkdir -p "renders/$id"
+          cp out/*.mp4 out/motion_log.json "renders/$id/"
+          git config user.name "careerloop-render-bot"
+          git config user.email "careerloop-render-bot@users.noreply.github.com"
+          git add "renders/$id"
+          git commit -m "motion $id" || exit 0
+          for attempt in 1 2 3; do git pull --rebase && git push && exit 0; sleep $((attempt * 5)); done
+          exit 1

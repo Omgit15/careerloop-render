@@ -22,6 +22,24 @@ Fallback (Locked Stack row 12): `"engine": "chrome"` renders with the runner's i
 
 Secrets (names only): `STUDIO_READ_TOKEN` (fine-grained, careerloop-studio Contents read-only) and `PEXELS_API_KEY` (free Pexels key for MoneyPrinterTurbo and short-video-maker stock footage; without it the reel ships on the plain brand background). The studio code, its pinned adopted repos and its config run here; nothing is copied in.
 
+## Motion templates (Locked Stack rows 19 to 22)
+
+`templates/` is the Motion Designer's library: kinetic type, explainers, data video and 3D, each rendered in **vertical** (1080x1920), **square** (1080x1080) and **4:5** (1080x1350) from one brand-kit tokens file, `templates/brand/tokens.json` (Kavya's colours, type, motion and the safe zone of each size). Every template has a README and a `test.json` that CI renders.
+
+| Template | Primary | Locked fallback | Folder |
+| --- | --- | --- | --- |
+| Kinetic type | HyperFrames (Sunwood motion-reel skill, motionmaxxing) | bang-motion frame capture; opus-video-skills (manual) | `templates/kinetic` |
+| Explainer | ManimCE (manim_skill) | HyperFrames diagram | `templates/explainer` |
+| Data video | HyperFrames plus D3 | bar_chart_race | `templates/data` |
+| 3D | three.js in HyperFrames; Blender Cycles (CPU) for hero shots, with a render-time cap | 2.5D in HyperFrames | `templates/three` |
+
+1. careerloop-studio's video lane (`lanes/video/motion.py`) checks each card and sends `repository_dispatch` with event `render-motion`: `{"jobs": [{"id": "motion-...", "template": "kinetic", "sizes": ["vertical", "square", "4x5"], "data": {...}}]}`.
+2. `.github/workflows/motion.yml`: `templates/plan.py` validates every job with `templates/rules.py` (a refused job fails the plan), and one matrix job per motion job runs `python -m templates.motion`, which renders every size with the template's chain (`templates/library.json`) and commits `renders/<id>/<size>.mp4` and `motion_log.json` to `main` for Pages.
+3. Before any engine runs, HTML templates are opened in Chromium and every visible word is checked against the size's safe zone at 25 points in time; the data template must also show its source and date for 2 seconds or more. The data rule (source, date, sample of 10 or more for shares, zero-based bars, no salary figures) is code in `templates/rules.py`. A refused job never falls back.
+4. Blender's render-time cap is the job's `cap_s` (the studio's `lane_motion.hero.cap_s`), enforced as the process timeout; over it, the 2.5D template takes over.
+
+Pins: `templates/pins.json` (HyperFrames, GSAP, D3 and three.js versions with SRI, ManimCE and bar_chart_race, the Blender download with SHA-256, and every adopted repo by SHA), `templates/explainer/requirements.txt` (ManimCE lock). Workflow `templates.yml` renders every test file with every engine on each pull request.
+
 ## Commands
 
 ```
@@ -35,10 +53,12 @@ python vendor/idrs/skills/social-carousel-generator/scripts/download_fonts.py \
 python -m pytest -q                          # test: 5 slides -> 5 JPEGs; reel payload validation
 python reel_plan.py payload.json             # the reel matrix for one payload, by hand
 python render.py job.json --out .            # one render by hand
+python -m pytest -q tests/test_templates.py tests/test_safe_zones.py   # motion rules and safe zones
+python -m templates.motion templates/kinetic/test.json --out out/kinetic   # one template (needs Node, FFmpeg)
 ```
 
 Health: the `test` workflow on every pull request. Pins: `render.json` (generator SHA), `requirements.txt` (exact versions, `uv pip compile --exclude-newer 2026-10-26`), and every action by commit SHA.
 
 ## Rollback
 
-Revert the PR's merge commit (reels: removing `reel.yml` stops new reel renders; the studio keeps dispatching and its queued reels wait with a founder alert at publish time). A bad render is removed by deleting `renders/<id>/` on `main`; publishing that item then fails with a founder alert and it stays queued until it is rendered again (run `render.yml` by hand with the job JSON).
+Revert the PR's merge commit (motion: removing `motion.yml` stops motion renders, and the studio's dispatches go unanswered; reels: removing `reel.yml` stops new reel renders; the studio keeps dispatching and its queued reels wait with a founder alert at publish time). A bad render is removed by deleting `renders/<id>/` on `main`; publishing that item then fails with a founder alert and it stays queued until it is rendered again (run `render.yml` by hand with the job JSON).

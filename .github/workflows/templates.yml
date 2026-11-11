@@ -1,0 +1,65 @@
+name: templates
+# Locked Stack rows 19 to 22: every motion template renders its test file at all three sizes
+# (square, vertical, 4:5), once per engine in its chain, so every locked fallback is proven too.
+# motion.py refuses text outside the safe zones and an unsourced data source line before rendering,
+# and ffprobe checks each size. The last entry runs the Blender hero with a 5 s cap and checks
+# that the 2.5D fallback took over.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    name: render ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: kinetic, test: kinetic, template: kinetic, engine: hyperframes, needs: node}
+          - {name: kinetic-bang-motion, test: kinetic, template: kinetic, engine: bang-motion, needs: ""}
+          - {name: explainer-manim, test: explainer, template: explainer, engine: manim, needs: manim}
+          - {name: explainer-diagram, test: explainer, template: explainer, engine: hyperframes-diagram, needs: node}
+          - {name: data-d3, test: data, template: data, engine: hyperframes-d3, needs: node}
+          - {name: data-bar-chart-race, test: data, template: data, engine: bar_chart_race, needs: uv}
+          - {name: three, test: three, template: three, engine: three, needs: node}
+          - {name: hero-blender, test: three, template: hero, engine: blender, needs: blender}
+          - {name: flat, test: three, template: flat, engine: flat, needs: node}
+          - {name: hero-over-cap, test: three, template: hero, engine: "", cap: "5", expect: flat, error: TimeoutExpired, needs: blender node}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/motion-tools
+        with:
+          needs: ${{ matrix.needs }}
+      - name: Render the test file (vertical, square, 4:5)
+        env:
+          TEST: ${{ matrix.test }}
+          TEMPLATE: ${{ matrix.template }}
+          ENGINE: ${{ matrix.engine }}
+          CAP: ${{ matrix.cap }}
+          EXPECT: ${{ matrix.expect || matrix.engine }}
+          ERROR: ${{ matrix.error }}
+        run: |
+          args=(--template "$TEMPLATE")
+          [ -n "$ENGINE" ] && args+=(--engine "$ENGINE")
+          [ -n "$CAP" ] && args+=(--cap-s "$CAP")
+          python -m templates.motion "templates/$TEST/test.json" --out out "${args[@]}"
+          got=$(jq -r .engine out/motion_log.json)
+          [ "$got" = "$EXPECT" ] || { echo "rendered by $got, expected $EXPECT"; exit 1; }
+          if [ -n "$ERROR" ]; then
+            first=$(jq -r '.failures[0].error' out/motion_log.json)
+            [ "$first" = "$ERROR" ] || { echo "first failure $first, expected $ERROR"; exit 1; }
+          fi
+          for s in vertical square 4x5; do test -s "out/$s.mp4"; done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: render-${{ matrix.name }}
+          path: |
+            out/*.mp4
+            out/motion_log.json
+          if-no-files-found: ignore
+          retention-days: 14

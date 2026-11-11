@@ -1,0 +1,27 @@
+{
+  "_doc": "Every adopted tool, pinned and never copied in. Chosen at least 2 weeks old (cut-off 2026-10-26), checked 2026-11-10.",
+  "npm": {
+    "hyperframes": {"version": "0.8.200", "published": "2026-10-25"},
+    "gsap": {"version": "3.14.2", "url": "https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js",
+             "sri": "sha384-sG0Hv1tP1lZCk9KQmrIbY/XNwi+OY84GQqhMscbnsoBFqAz8KNCil1kvfL3Hbbk2"},
+    "d3": {"version": "7.9.0", "url": "https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js",
+           "sri": "sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i"},
+    "three": {"version": "0.186.1", "url": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"}
+  },
+  "pypi": {
+    "manim": {"version": "0.22.0", "lock": "templates/explainer/requirements.txt"},
+    "bar_chart_race": {"version": "0.1.0", "python": "3.11",
+                       "with": ["bar_chart_race==0.1.0", "pandas==1.5.3", "matplotlib==3.7.5", "numpy==1.26.4"]}
+  },
+  "blender": {"version": "5.2.3", "url": "https://download.blender.org/release/Blender5.2/blender-5.2.3-linux-x64.tar.xz",
+              "sha256": "78486c018b4443efe5e75ab54c290ed8c15abafd249b862c2c9ce2530a918eec"},
+  "repos": {
+    "heygen-com/hyperframes": {"sha": "2c10eb0a336059cfc98ae10b5398747a7bba278d", "tag": "v0.8.200", "licence": "Apache-2.0"},
+    "Sunwood-ai-labs/hyperframes-motion-reel-skill": {"sha": "be78681a88a70f1f66c82275299fe569a9a9fcaa", "licence": "MIT"},
+    "Tejashmakwana/motionmaxxing": {"sha": "8c8ec0f2a6f6c9a0da15cd24f7b1298ab298368c", "licence": "Apache-2.0"},
+    "bangtutorial/bang-motion": {"sha": "c1aa65e921c970d858705fcb4a53a8294d1a4131", "licence": "MIT"},
+    "tuzhechen2005/opus-video-skills": {"sha": "59744a69c7b916cfbe4c4ec84006b0c2f5e2fde1", "licence": "MIT"},
+    "adithya-s-k/manim_skill": {"sha": "cef045011722d285692e3381d12d4d637da56e18", "licence": "MIT"},
+    "dexplo/bar_chart_race": {"sha": "5930c3138a597d30c7d345379f5c1329ba68a035", "licence": "MIT"}
+  }
+}

@@ -1,0 +1,55 @@
+<!doctype html>
+<!-- Kinetic type (Locked Stack row 19). At most 6 words per screen, the key word in the brand
+     accent, words landing on the beat. Moves follow motionmaxxing's craft laws (land decelerates,
+     leave accelerates, almost nothing fades between scenes). Filled by templates/fill.py. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=__W__, height=__H__" />
+  <script src="__GSAP__" integrity="__GSAP_SRI__" crossorigin="anonymous"></script>
+  <style>__TOKENS_CSS__</style>
+  <style>
+    .screen { position: absolute; inset: 0; display: flex; flex-wrap: wrap; align-content: center;
+              justify-content: center; gap: 0 0.28em; text-align: center; visibility: hidden;
+              font-size: var(--display); font-weight: var(--w-display); letter-spacing: -0.02em; }
+    .word { display: inline-block; }
+    .key { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="main" data-start="0" data-duration="__DUR__"
+       data-width="__W__" data-height="__H__" data-fps="__FPS__">
+    <div id="safe" class="clip" data-start="0" data-duration="__DUR__" data-track-index="0"></div>
+  </div>
+  <script id="job" type="application/json">__JOB_JSON__</script>
+  <script>
+    const job = JSON.parse(document.getElementById("job").textContent);
+    const safe = document.getElementById("safe");
+    const tl = gsap.timeline({ paused: true });
+    const beat = job.timing.beat_s;
+    job.screens.forEach((s, i) => {
+      const line = document.createElement("div");
+      line.className = "screen";
+      for (const w of s.text.split(" ")) {
+        const span = document.createElement("span");
+        span.className = "txt word" + (s.key && w.replace(/[^\p{L}\p{N}]/gu, "") === s.key ? " key" : "");
+        span.textContent = w;
+        line.append(span);
+      }
+      safe.append(line);
+      const words = line.querySelectorAll(".word"), t0 = i * beat;
+      tl.set(line, { autoAlpha: 1 }, t0);
+      tl.from(words, { yPercent: 35, autoAlpha: 0, duration: job.motion.enter_s, ease: job.motion.enter,
+                       stagger: Math.min(0.1, (beat * 0.35) / words.length) }, t0);
+      if (i < job.screens.length - 1) {
+        tl.to(line, { yPercent: -6, autoAlpha: 0, duration: job.motion.leave_s, ease: job.motion.leave },
+              t0 + beat - job.motion.leave_s);
+      }
+    });
+    tl.to({}, { duration: 0.01 }, job.duration - 0.01);
+    window.__timelines = window.__timelines || {};
+    window.__timelines.main = tl;
+    tl.seek(0);
+  </script>
+</body>
+</html>

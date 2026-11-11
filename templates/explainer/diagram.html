@@ -1,0 +1,55 @@
+<!doctype html>
+<!-- Explainer fallback (Locked Stack row 20): a HyperFrames diagram. One idea per scene, every
+     element labelled, a generic flow (never a fake product screen). Filled by templates/fill.py. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=__W__, height=__H__" />
+  <script src="__GSAP__" integrity="__GSAP_SRI__" crossorigin="anonymous"></script>
+  <style>__TOKENS_CSS__</style>
+  <style>
+    #safe { display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 4%; }
+    .title { font-size: var(--title); font-weight: var(--w-display); text-align: center; }
+    .flow { display: flex; flex-direction: column; align-items: center; gap: 0; }
+    .step { width: 94%; padding: 0.35em 0.7em; border-radius: 18px; background: var(--surface);
+            border-left: 10px solid var(--accent-2); font-size: var(--body); font-weight: var(--w-body); }
+    .step.last { border-left-color: var(--accent); }
+    .arrow { width: 6px; height: 1.1em; background: var(--muted); font-size: var(--small); }
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="main" data-start="0" data-duration="__DUR__"
+       data-width="__W__" data-height="__H__" data-fps="__FPS__">
+    <div id="safe" class="clip" data-start="0" data-duration="__DUR__" data-track-index="0">
+      <div class="txt title" id="title"></div>
+      <div class="flow" id="flow"></div>
+    </div>
+  </div>
+  <script id="job" type="application/json">__JOB_JSON__</script>
+  <script>
+    const job = JSON.parse(document.getElementById("job").textContent);
+    const flow = document.getElementById("flow");
+    document.getElementById("title").textContent = job.title;
+    const tl = gsap.timeline({ paused: true });
+    const m = job.motion, step = job.timing.step_s;
+    tl.from("#title", { y: 24, autoAlpha: 0, duration: m.enter_s, ease: m.enter }, 0);
+    job.steps.forEach((text, i) => {
+      if (i) {
+        const arrow = document.createElement("div");
+        arrow.className = "arrow";
+        flow.append(arrow);
+        tl.from(arrow, { scaleY: 0, transformOrigin: "top", duration: 0.25, ease: m.enter }, (i + 1) * step - 0.25);
+      }
+      const box = document.createElement("div");
+      box.className = "txt step" + (i === job.steps.length - 1 ? " last" : "");
+      box.textContent = text;
+      flow.append(box);
+      tl.from(box, { x: -24, autoAlpha: 0, duration: m.enter_s, ease: m.enter }, (i + 1) * step);
+    });
+    tl.to({}, { duration: 0.01 }, job.duration - 0.01);
+    window.__timelines = window.__timelines || {};
+    window.__timelines.main = tl;
+    tl.seek(0);
+  </script>
+</body>
+</html>

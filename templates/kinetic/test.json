@@ -1,0 +1,5 @@
+{"id": "test-kinetic", "template": "kinetic",
+ "data": {"screens": [{"text": "Six seconds.", "key": "Six"},
+                      {"text": "That is the whole first scan.", "key": "scan"},
+                      {"text": "Put the job title first.", "key": "title"},
+                      {"text": "Comment SCORE for a free check.", "key": "SCORE"}]}}
